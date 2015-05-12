@@ -10,9 +10,9 @@ namespace :test do
   task :ios => :prepare do
     simulators = get_ios_simulators
     destinations = Array.new
-    simulators.each{ |version, device_names| 
-      destinations.push("platform=iOS Simulator,OS=#{version},name=#{device_names[0]}")
-      puts "Will run tests for iOS Simulator on iOS #{version} using #{device_names[0]}"
+    simulators.each {|version, available_simulators| 
+      destinations.push("platform=iOS Simulator,OS=#{available_simulators[:runtime]},name=#{available_simulators[:device_names][0]}")
+      puts "Will run tests for iOS Simulator on iOS #{available_simulators[:runtime]} using #{available_simulators[:device_names][0]}"
     }
       
     run_tests('iOS Tests', 'iphonesimulator', destinations)
@@ -57,18 +57,27 @@ def red(string)
 end
 
 def get_ios_simulators
-  section_regex = /== Devices ==(.*?)(?=(?===)|\z)/m
+  device_section_regex = /== Devices ==(.*?)(?=(?===)|\z)/m
+  runtime_section_regex = /== Runtimes ==(.*?)(?=(?===)|\z)/m
+  runtime_version_regex  = /iOS (.*) \((.*) - .*?\)/
   xcrun_output = `xcrun simctl list`
   puts "Available iOS Simulators: \n#{xcrun_output}"
-  device_section = xcrun_output.scan(section_regex)[0]
+  
+  simulators = Hash.new
+  runtimes_section = xcrun_output.scan(runtime_section_regex)[0]
+  runtimes_section[0].scan(runtime_version_regex) {|result|
+    simulators[result[0]] = Hash.new
+    simulators[result[0]][:runtime] = result[1]
+  }
+  
+  device_section = xcrun_output.scan(device_section_regex)[0]
   version_regex = /-- iOS (.*?) --(.*?)(?=(?=-- .*? --)|\z)/m
   simulator_name_regex = /(.*) \([A-F0-9-]*\) \(.*\)/
-  simulators = Hash.new
   device_section[0].scan(version_regex) {|result| 
-    simulators[result[0]] = Array.new
+    simulators[result[0]][:device_names] = Array.new
     result[1].scan(simulator_name_regex) { |device_name_result| 
       device_name = device_name_result[0].strip
-      simulators[result[0]].push(device_name)
+      simulators[result[0]][:device_names].push(device_name)
     }
    }
    return simulators
