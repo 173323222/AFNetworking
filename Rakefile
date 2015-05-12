@@ -58,11 +58,13 @@ end
 
 def get_ios_simulators
   section_regex = /== Devices ==(.*?)(?=(?===)|\z)/m
-  output = `xcrun simctl list`.scan(section_regex)[0]
+  xcrun_output = `xcrun simctl list`
+  puts "Available iOS Simulators: \n#{xcrun_output}"
+  device_section = xcrun_output.scan(section_regex)[0]
   version_regex = /-- iOS (.*?) --(.*?)(?=(?=-- .*? --)|\z)/m
   simulator_name_regex = /(.*) \([A-F0-9-]*\) \(.*\)/
   simulators = Hash.new
-  output[0].scan(version_regex) {|result| 
+  device_section[0].scan(version_regex) {|result| 
     simulators[result[0]] = Array.new
     result[1].scan(simulator_name_regex) { |device_name_result| 
       device_name = device_name_result[0].strip
